@@ -21,22 +21,24 @@ import java.io.FileInputStream
 import java.io.IOException
 import android.text.TextUtils
 import android.webkit.MimeTypeMap
+import java.util.*
+import kotlin.collections.HashMap
 
 
 class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
     private var applicationContext: Context? = null
     private var methodChannel: MethodChannel? = null
 
-    override fun onMethodCall(call: MethodCall, result: Result): Unit {
-        when {
-            call.method == "saveImageToGallery" -> {
+    override fun onMethodCall(call: MethodCall, result: Result) {
+        when (call.method) {
+            "saveImageToGallery" -> {
                 val image = call.argument<ByteArray>("imageBytes") ?: return
                 val quality = call.argument<Int>("quality") ?: return
                 val name = call.argument<String>("name")
 
                 result.success(saveImageToGallery(BitmapFactory.decodeByteArray(image, 0, image.size), quality, name))
             }
-            call.method == "saveFileToGallery" -> {
+            "saveFileToGallery" -> {
                 val path = call.argument<String>("file") ?: return
                 val name = call.argument<String>("name")
                 result.success(saveFileToGallery(path, name))
@@ -81,7 +83,7 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
     private fun getMIMEType(extension: String): String? {
         var type: String? = null;
         if (!TextUtils.isEmpty(extension)) {
-            type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.toLowerCase())
+            type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.lowercase(Locale.ROOT))
         }
         return type
     }
@@ -95,7 +97,7 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
             bmp.compress(Bitmap.CompressFormat.JPEG, quality, fos)
             fos.flush()
             fos.close()
-            context!!.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, fileUri))
+            context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, fileUri))
             bmp.recycle()
             SaveResultModel(fileUri.toString().isNotEmpty(), fileUri.toString(), null).toHashMap()
         } catch (e: IOException) {
@@ -122,7 +124,7 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
             outputStream.close()
             fileInputStream.close()
 
-            context!!.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, fileUri))
+            context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, fileUri))
             SaveResultModel(fileUri.toString().isNotEmpty(), fileUri.toString(), null).toHashMap()
         } catch (e: IOException) {
             SaveResultModel(false, null, e.toString()).toHashMap()
@@ -147,9 +149,10 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
 
 }
 
-class SaveResultModel(var isSuccess: Boolean,
-                      var filePath: String? = null,
-                      var errorMessage: String? = null) {
+class SaveResultModel(
+    private var isSuccess: Boolean,
+    private var filePath: String? = null,
+    private var errorMessage: String? = null) {
     fun toHashMap(): HashMap<String, Any?> {
         val hashMap = HashMap<String, Any?>()
         hashMap["isSuccess"] = isSuccess
